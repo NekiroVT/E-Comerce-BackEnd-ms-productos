@@ -1,0 +1,16 @@
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:oracle:thin:@localhost:1523/free  # Cambié a freepdb1
+    username: C##productos # Usa el usuario correspondiente para tu microservicio
+    password: productos123  # Cambia esto por la contraseña correcta
+    driver-class-name: oracle.jdbc.OracleDriver
+
+  jpa:
+    database-platform: org.hibernate.dialect.OracleDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
