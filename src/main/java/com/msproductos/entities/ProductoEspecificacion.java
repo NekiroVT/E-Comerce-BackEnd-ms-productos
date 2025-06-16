@@ -2,6 +2,7 @@ package com.msproductos.entities;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.util.UUID;
 
 @Entity
@@ -13,12 +14,12 @@ public class ProductoEspecificacion {
 
     @Id
     @Column(name = "id_especificacion")
-    private UUID idEspecificacion;
+    private UUID id;
+
+    private String clave;
+    private String valor;
 
     @ManyToOne
     @JoinColumn(name = "producto_id")
     private Producto producto;
-
-    private String clave;
-    private String valor;
 }

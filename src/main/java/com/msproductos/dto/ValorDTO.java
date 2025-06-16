@@ -2,8 +2,9 @@ package com.msproductos.dto;
 
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
-public class ProductoEspecificacionDTO {
-    private String clave;
+public class ValorDTO {
     private String valor;
 }

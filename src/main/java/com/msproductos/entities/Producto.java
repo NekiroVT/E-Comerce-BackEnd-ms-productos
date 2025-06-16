@@ -1,5 +1,6 @@
 package com.msproductos.entities;
 
+import com.msproductos.enums.EstadoProducto;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -15,39 +16,30 @@ public class Producto {
 
     @Id
     @Column(name = "id_producto")
-    private UUID idProducto;
+    private UUID id;
 
     private String nombre;
-
-    @Column(length = 4000)
     private String descripcion;
 
-    private BigDecimal precio;
+    @Enumerated(EnumType.STRING)
+    private EstadoProducto estado;
 
-    @Column(name = "stock_total")
+    @Transient
     private Integer stockTotal;
 
-    private Boolean activo;
+    @Transient
+    private BigDecimal precioPrincipal;
 
-    @Column(name = "calificacion_promedio")
-    private Double calificacionPromedio;
+    @Transient
+    private String urlImagenPrincipal;
 
-    @Column(name = "numero_ventas")
-    private Integer numeroVentas;
-
-    @Column(name = "vendedor_id")
-    private UUID vendedorId;
-
-    // ✅ Relación con producto_categoria
-    @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProductoCategoria> categorias = new ArrayList<>();
 
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Variacion> variaciones = new ArrayList<>();
+    private List<ImagenProducto> imagenes = new ArrayList<>();
 
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductoEspecificacion> especificaciones = new ArrayList<>();
 
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ImagenProducto> imagenes = new ArrayList<>();
+    private List<ProductoCombinacion> combinaciones = new ArrayList<>();
 }

@@ -1,21 +1,21 @@
 package com.msproductos.dto;
 
 import com.msproductos.enums.EstadoProducto;
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
 @Builder
-public class ProductoDTO {
-
+@NoArgsConstructor
+@AllArgsConstructor
+public class TarjetaProductoDTO {
     private UUID id;
     private String nombre;
     private EstadoProducto estado;
-
-    private Integer stockTotal;
     private BigDecimal precioPrincipal;
     private String urlImagenPrincipal;
+    private Integer stockTotal;
 }

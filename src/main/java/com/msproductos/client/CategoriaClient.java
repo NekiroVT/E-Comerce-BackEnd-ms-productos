@@ -2,6 +2,7 @@ package com.msproductos.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
@@ -11,6 +12,11 @@ import java.util.UUID;
 public interface CategoriaClient {
 
     // ✅ Ruta correcta según tu @RequestMapping("/api/categorias")
-    @GetMapping("/api/categorias/validar")
-    boolean existenCategorias(@RequestParam List<UUID> categoriaIds);
+
+    @GetMapping("/api/categorias/existe/{id}")
+    boolean existeCategoria(@PathVariable("id") UUID id);
+
+    @GetMapping("/api/categorias/nombre/{id}")
+    String obtenerNombreCategoria(@PathVariable UUID id);
 }
+

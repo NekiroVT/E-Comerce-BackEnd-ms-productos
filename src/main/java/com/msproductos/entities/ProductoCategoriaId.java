@@ -1,13 +1,16 @@
 package com.msproductos.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
+import jakarta.persistence.*;
+import lombok.*;
 
 import java.io.Serializable;
 import java.util.Objects;
 import java.util.UUID;
 
 @Embeddable
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProductoCategoriaId implements Serializable {
 
     @Column(name = "id_producto")
@@ -15,26 +18,6 @@ public class ProductoCategoriaId implements Serializable {
 
     @Column(name = "id_categoria")
     private UUID categoriaId;
-
-    // Getters y setters
-
-    public UUID getProductoId() {
-        return productoId;
-    }
-
-    public void setProductoId(UUID productoId) {
-        this.productoId = productoId;
-    }
-
-    public UUID getCategoriaId() {
-        return categoriaId;
-    }
-
-    public void setCategoriaId(UUID categoriaId) {
-        this.categoriaId = categoriaId;
-    }
-
-    // equals y hashCode
 
     @Override
     public boolean equals(Object o) {

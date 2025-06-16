@@ -6,19 +6,19 @@ import lombok.*;
 import java.util.UUID;
 
 @Entity
-@Table(name = "imagen_producto")
+@Table(name = "imagen_combinacion")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ImagenProducto {
+public class ImagenCombinacion {
 
     @Id
-    @Column(name = "id_imagen_producto")
+    @Column(name = "id_imagen_combinacion")
     private UUID id;
 
     @ManyToOne
-    @JoinColumn(name = "producto_id")
-    private Producto producto;
+    @JoinColumn(name = "combinacion_id")
+    private ProductoCombinacion combinacion;
 
     @Column(name = "url_imagen")
     private String urlImagen;

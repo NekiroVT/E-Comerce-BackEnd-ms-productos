@@ -1,107 +1,109 @@
 package com.msproductos.controller;
 
 import com.msproductos.dto.ProductoDTO;
+import com.msproductos.dto.ProductoRequest;
+import com.msproductos.dto.TarjetaProductoDTO;
 import com.msproductos.service.ProductoService;
 import com.msproductos.util.UUIDUtil;
-import org.springframework.http.HttpHeaders;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.msproductos.dto.DetalleProductoDTO;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/productos")
+@RequiredArgsConstructor
 public class ProductoController {
 
     private final ProductoService productoService;
 
-    public ProductoController(ProductoService productoService) {
-        this.productoService = productoService;
-    }
-
-    // 🛡️ Crear producto
     @PostMapping
-    public ResponseEntity<?> crearProducto(@RequestBody ProductoDTO dto,
-                                           @RequestHeader HttpHeaders headers) {
-        String permisos = headers.getFirst("X-User-Permissions");
+    public ResponseEntity<?> crearProducto(
+            @RequestBody ProductoRequest request,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-User-Permissions") String permisos) {
+
+        // 🔐 Validar permisos
         if (permisos == null || !permisos.contains("productos:productos.create")) {
-            return ResponseEntity.status(403).body("No tienes permiso para crear productos");
+            return ResponseEntity.status(403).body(
+                    Map.of("success", false, "mensaje", "❌ No tienes permiso para crear productos")
+            );
         }
 
-        return ResponseEntity.ok(productoService.crearProducto(dto, headers));
-    }
-
-    // 🛡️ Obtener producto por ID
-    // ✅ Obtener producto por ID sin verificación de permisos
-    @GetMapping("/{id}")
-    public ResponseEntity<?> obtenerProducto(@PathVariable String id) {
+        // 🧠 Convertir UUID flexible
+        UUID usuarioId;
         try {
-            UUID uuid = UUIDUtil.parseFlexibleUUID(id);
-            return ResponseEntity.ok(productoService.obtenerProducto(uuid));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(404).body("❌ Producto no encontrado");
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body("❌ " + e.getMessage());
-        }
-    }
-
-
-    // 🛡️ Listar todos los productos
-    //@GetMapping
-    //public ResponseEntity<?> listarProductos(@RequestHeader("X-User-Permissions") String permisos) {
-        // Comenta la validación de permisos si no quieres restringir
-        // if (!permisos.contains("productos:productos.get")) {
-        //     return ResponseEntity.status(403).body("No tienes permiso para listar productos");
-        // }
-
-        //return ResponseEntity.ok(productoService.listarProductos());
-    //}
-
-    @GetMapping
-    public ResponseEntity<?> listarProductos() {
-        return ResponseEntity.ok(productoService.listarProductos()); // No más verificación de permisos
-    }
-
-
-
-    // 🛡️ Actualizar producto
-    @PutMapping("/{id}")
-    public ResponseEntity<?> actualizarProducto(
-            @PathVariable String id,
-            @RequestBody ProductoDTO dto,
-            @RequestHeader("X-User-Permissions") String permisos
-    ) {
-        if (!permisos.contains("productos:productos.update")) {
-            return ResponseEntity.status(403).body("No tienes permiso para editar productos");
+            usuarioId = UUIDUtil.parseFlexibleUUID(userId);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "mensaje", "❌ UUID de usuario inválido")
+            );
         }
 
-        try {
-            UUID uuid = UUIDUtil.parseFlexibleUUID(id);
-            return ResponseEntity.ok(productoService.actualizarProducto(uuid, dto));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(404).body("❌ Producto no encontrado");
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body("❌ " + e.getMessage());
-        }
+        // 🚀 Crear producto
+        ProductoDTO producto = productoService.crearProducto(request, usuarioId);
+        return ResponseEntity.ok(
+                Map.of("success", true, "producto", producto)
+        );
     }
 
-    // 🛡️ Eliminar producto
     @DeleteMapping("/{id}")
     public ResponseEntity<?> eliminarProducto(
             @PathVariable String id,
-            @RequestHeader("X-User-Permissions") String permisos
-    ) {
-        if (!permisos.contains("productos:productos.delete")) {
-            return ResponseEntity.status(403).body("No tienes permiso para eliminar productos");
+            @RequestHeader("X-User-Permissions") String permisos) {
+
+        // 🔐 Validar permisos
+        if (permisos == null || !permisos.contains("productos:productos.delete")) {
+            return ResponseEntity.status(403).body(
+                    Map.of("success", false, "mensaje", "❌ No tienes permiso para eliminar productos")
+            );
         }
 
+        // 🧠 Parsear UUID manualmente (acepta sin guiones y mayúsculas)
+        UUID productoId;
         try {
-            UUID uuid = UUIDUtil.parseFlexibleUUID(id);
-            return ResponseEntity.ok(productoService.eliminarProducto(uuid));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(404).body("❌ Producto no encontrado");
+            productoId = UUIDUtil.parseFlexibleUUID(id);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "mensaje", "❌ UUID inválido")
+            );
+        }
+
+        // 🗑️ Eliminar producto
+        try {
+            productoService.eliminarProducto(productoId);
+            return ResponseEntity.ok(
+                    Map.of("success", true, "mensaje", "✅ Producto eliminado correctamente")
+            );
         } catch (RuntimeException e) {
-            return ResponseEntity.status(404).body("❌ " + e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "mensaje", e.getMessage())
+            );
         }
     }
+
+    @GetMapping("/tarjetas")
+    public ResponseEntity<?> obtenerProductosParaCards() {
+        List<TarjetaProductoDTO> tarjetas = productoService.obtenerTarjetasProductos();
+        return ResponseEntity.ok(Map.of("success", true, "productos", tarjetas));
+    }
+
+    @GetMapping("/detalles/{id}")
+    public ResponseEntity<DetalleProductoDTO> obtenerDetalleProducto(@PathVariable String id) {
+        try {
+            // 🔁 Convierte UUID flexible (sin guiones, en mayúscula, etc.)
+            var uuid = UUIDUtil.parseFlexibleUUID(id);
+            var dto = productoService.obtenerDetalleProducto(uuid);
+            return ResponseEntity.ok(dto);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(null); // UUID malformado
+        }
+    }
+
+
+
 }
