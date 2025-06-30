@@ -27,6 +27,11 @@ public class ProductoRequest {
 
     private List<CombinacionDTO> combinaciones;
 
+    // 🖼️ Clave usada para manejar imágenes de combinaciones
+    @JsonDeserialize(using = FlexibleUUIDDeserializer.class)
+    private UUID claveImagenes;
+
+    // ↓ Clases internas
     @Data
     public static class ImagenDTO {
         private String urlImagen;

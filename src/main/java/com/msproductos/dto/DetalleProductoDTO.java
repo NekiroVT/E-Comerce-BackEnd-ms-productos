@@ -18,6 +18,10 @@ public class DetalleProductoDTO {
     private List<ImagenDTO> imagenes;
     private List<EspecificacionDTO> especificaciones;
     private List<CombinacionDTO> combinaciones;
+    private UUID claveControlaImagenes; // ✅ envía el ID como en el request y como espera Angular
+    // 👈 El nombre de la clave que controla las imágenes (ej. "Color")
+
+
 
     @Data
     public static class ImagenDTO {
@@ -33,6 +37,7 @@ public class DetalleProductoDTO {
 
     @Data
     public static class CombinacionDTO {
+        private UUID idCombinacion;
         private Integer stock;
         private BigDecimal precio;
         private boolean esPrincipal;

@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductoUsuarioRepository extends JpaRepository<ProductoUsuario, ProductoUsuarioId> {
@@ -16,4 +18,7 @@ public interface ProductoUsuarioRepository extends JpaRepository<ProductoUsuario
     @Transactional
     @Query("DELETE FROM ProductoUsuario pu WHERE pu.productoId = :productoId")
     void deleteByProductoId(@Param("productoId") UUID productoId);
+    @Query("SELECT p FROM ProductoUsuario p WHERE p.usuarioId = :usuarioId")
+    List<ProductoUsuario> findByUsuarioId(UUID usuarioId);
+
 }

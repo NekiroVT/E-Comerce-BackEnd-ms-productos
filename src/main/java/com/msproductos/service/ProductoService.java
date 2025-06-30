@@ -1,9 +1,7 @@
 package com.msproductos.service;
 
-import com.msproductos.dto.DetalleProductoDTO;
-import com.msproductos.dto.ProductoDTO;
-import com.msproductos.dto.ProductoRequest;
-import com.msproductos.dto.TarjetaProductoDTO;
+import com.msproductos.dto.*;
+import com.msproductos.entities.ProductoUsuario;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +13,10 @@ public interface ProductoService {
     void eliminarProducto(UUID productoId); // ✅ AGREGA ESTE MÉTODO
     List<TarjetaProductoDTO> obtenerTarjetasProductos();
     DetalleProductoDTO obtenerDetalleProducto(UUID id);
+    // Cambia el método en el repositorio si es necesario
 
+    public UsuarioCarritoDTO obtenerProductoUsuarioPorUsuarioId(UUID usuarioId);
 
 }
+
+

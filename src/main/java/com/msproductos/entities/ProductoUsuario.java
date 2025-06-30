@@ -26,11 +26,20 @@ public class ProductoUsuario {
     @Column(name = "fecha_creacion", nullable = false)
     private LocalDateTime fechaCreacion = LocalDateTime.now();
 
+    // Nuevas columnas para almacenar firstName y lastName
+    @Column(name = "first_name", nullable = true)
+    private String firstName;
+
+    @Column(name = "last_name", nullable = true)
+    private String lastName;
+
     // 👉 Constructor personalizado
-    public ProductoUsuario(UUID productoId, UUID usuarioId) {
+    public ProductoUsuario(UUID productoId, UUID usuarioId, String firstName, String lastName) {
         this.productoId = productoId;
         this.usuarioId = usuarioId;
         this.fechaCreacion = LocalDateTime.now();
+        this.firstName = firstName;
+        this.lastName = lastName;
     }
 
     @Data

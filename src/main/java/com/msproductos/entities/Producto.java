@@ -24,6 +24,9 @@ public class Producto {
     @Enumerated(EnumType.STRING)
     private EstadoProducto estado;
 
+    @Column(name = "clave_controla_imagenes")
+    private String claveControlaImagenes; // ✅ Clave UUID como texto
+
     @Transient
     private Integer stockTotal;
 
@@ -32,7 +35,6 @@ public class Producto {
 
     @Transient
     private String urlImagenPrincipal;
-
 
     @OneToMany(mappedBy = "producto", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ImagenProducto> imagenes = new ArrayList<>();

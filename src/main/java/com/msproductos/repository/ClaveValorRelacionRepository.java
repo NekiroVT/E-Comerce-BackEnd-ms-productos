@@ -11,5 +11,5 @@ import com.msproductos.entities.ClaveValorRelacionId;
 public interface ClaveValorRelacionRepository extends JpaRepository<ClaveValorRelacion, ClaveValorRelacionId> {
     boolean existsByClave_IdAndValor_Id(UUID claveId, UUID valorId);
 
-    List<ClaveValorRelacion> findByClave_Id(UUID claveId);
+
 }

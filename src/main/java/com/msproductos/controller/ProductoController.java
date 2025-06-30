@@ -1,14 +1,21 @@
 package com.msproductos.controller;
 
-import com.msproductos.dto.ProductoDTO;
-import com.msproductos.dto.ProductoRequest;
-import com.msproductos.dto.TarjetaProductoDTO;
+import com.msproductos.client.UsuariosClient;
+import com.msproductos.dto.*;
+import com.msproductos.entities.ProductoUsuario;
+import com.msproductos.enums.EstadoProducto;
+import com.msproductos.repository.ProductoUsuarioRepository;
 import com.msproductos.service.ProductoService;
 import com.msproductos.util.UUIDUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.msproductos.dto.DetalleProductoDTO;
+import com.msproductos.repository.ProductoRepository;
+import com.msproductos.repository.ProductoCombinacionRepository;
+
+
+
 
 import java.util.List;
 import java.util.Map;
@@ -20,6 +27,12 @@ import java.util.UUID;
 public class ProductoController {
 
     private final ProductoService productoService;
+    private final ProductoRepository productoRepository;
+    private final ProductoCombinacionRepository productoCombinacionRepository;
+    private UsuariosClient usuariosClient;
+    @Autowired
+    private ProductoUsuarioRepository productoUsuarioRepository;
+
 
     @PostMapping
     public ResponseEntity<?> crearProducto(
@@ -103,6 +116,97 @@ public class ProductoController {
             return ResponseEntity.badRequest().body(null); // UUID malformado
         }
     }
+
+    @GetMapping("/existe/{id}")
+    public ResponseEntity<?> existeProducto(
+            @PathVariable String id,
+            @RequestHeader("X-User-Permissions") String permisos) {
+
+        if (permisos == null || !permisos.contains("productos:productos.read")) {
+            return ResponseEntity.status(403).body(
+                    Map.of("success", false, "mensaje", "❌ No tienes permiso para verificar productos")
+            );
+        }
+
+        try {
+            UUID uuid = UUIDUtil.parseFlexibleUUID(id);
+            boolean existe = productoRepository.existsById(uuid);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "mensaje", "✅ Verificación completada",
+                    "existe", existe
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "mensaje", "❌ UUID inválido")
+            );
+        }
+    }
+
+    @GetMapping("/combinacion/existe/{id}")
+    public ResponseEntity<?> existeCombinacion(
+            @PathVariable String id,
+            @RequestHeader("X-User-Permissions") String permisos) {
+
+        if (permisos == null || !permisos.contains("productos:productos.read")) {
+            return ResponseEntity.status(403).body(
+                    Map.of("success", false, "mensaje", "❌ No tienes permiso para verificar combinaciones")
+            );
+        }
+
+        try {
+            UUID uuid = UUIDUtil.parseFlexibleUUID(id);
+            boolean existe = productoCombinacionRepository.existsById(uuid);
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "mensaje", "✅ Verificación completada",
+                    "existe", existe
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "mensaje", "❌ UUID inválido")
+            );
+        }
+    }
+
+    @GetMapping("/usuario/{usuarioId}")
+    public UsuarioCarritoDTO obtenerUsuarioParaCarrito(@PathVariable UUID usuarioId) {
+        // Llamamos al servicio para obtener el DTO del usuario
+        return productoService.obtenerProductoUsuarioPorUsuarioId(usuarioId);
+    }
+
+    @PutMapping("/{id}/estado")
+    public ResponseEntity<Void> actualizarEstado(
+            @PathVariable UUID id,
+            @RequestBody CambiarEstadoProductoRequest request) {
+
+        var producto = productoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Producto no encontrado"));
+
+        producto.setEstado(EstadoProducto.valueOf(request.getNuevoEstado()));
+        productoRepository.save(producto);
+
+        return ResponseEntity.ok().build();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

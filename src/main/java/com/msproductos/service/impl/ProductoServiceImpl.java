@@ -1,9 +1,8 @@
 package com.msproductos.service.impl;
 
 import com.msproductos.client.CategoriaClient;
-import com.msproductos.dto.ProductoDTO;
-import com.msproductos.dto.ProductoRequest;
-import com.msproductos.dto.TarjetaProductoDTO;
+import com.msproductos.client.LogisticaClient;
+import com.msproductos.dto.*;
 import com.msproductos.entities.*;
 import com.msproductos.enums.EstadoProducto;
 import com.msproductos.repository.*;
@@ -12,13 +11,13 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import com.msproductos.repository.ValorClaveRepository;
-import com.msproductos.dto.DetalleProductoDTO;
+import com.msproductos.client.UsuariosClient;
 
 import com.msproductos.entities.*;
 import com.msproductos.repository.*;
 
 
-
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,6 +32,8 @@ public class ProductoServiceImpl implements ProductoService {
     private final ValorClaveRepository valorClaveRepository;
     private final ClaveValorRelacionRepository claveValorRelacionRepository;
     private final ProductoCategoriaRepository productoCategoriaRepository;
+    private final UsuariosClient usuariosClient;
+    private final LogisticaClient logisticaClient;
 
 
 
@@ -43,10 +44,16 @@ public class ProductoServiceImpl implements ProductoService {
     @Override
     @Transactional
     public ProductoDTO crearProducto(ProductoRequest request, UUID usuarioId) {
-        // 1. Validar combinación principal
-        if (request.getCombinaciones().stream().noneMatch(ProductoRequest.CombinacionDTO::isEsPrincipal)) {
-            throw new RuntimeException("❌ Debe haber al menos una combinación principal");
+        // 1. Validar que haya exactamente una combinación principal
+        long cantidadPrincipales = request.getCombinaciones().stream()
+                .filter(ProductoRequest.CombinacionDTO::isEsPrincipal)
+                .count();
+
+        if (cantidadPrincipales != 1) {
+            throw new RuntimeException("❌ Debe haber exactamente una combinación principal. Actualmente hay: " + cantidadPrincipales);
         }
+
+
 
         // 2. Validar categorías
         for (UUID categoriaId : request.getCategorias()) {
@@ -61,7 +68,9 @@ public class ProductoServiceImpl implements ProductoService {
         producto.setId(UUID.randomUUID());
         producto.setNombre(request.getNombre());
         producto.setDescripcion(request.getDescripcion());
-        producto.setEstado(request.getEstado());
+        producto.setEstado(EstadoProducto.PENDIENTE);
+        producto.setClaveControlaImagenes(request.getClaveImagenes().toString());
+
 
         // 4. Imágenes generales
         List<ImagenProducto> imagenes = request.getImagenes().stream()
@@ -74,6 +83,52 @@ public class ProductoServiceImpl implements ProductoService {
                 .map(es -> new ProductoEspecificacion(UUID.randomUUID(), es.getClave(), es.getValor(), producto))
                 .collect(Collectors.toList());
         producto.setEspecificaciones(especificaciones);
+
+        // 🔒 5.5 Validar que solo se usen como máximo 2 claves distintas entre todas las combinaciones
+        Set<UUID> clavesDistintasGlobal = new HashSet<>();
+        for (ProductoRequest.CombinacionDTO combDTO : request.getCombinaciones()) {
+            for (ProductoRequest.AtributoDTO atr : combDTO.getAtributos()) {
+                clavesDistintasGlobal.add(atr.getClaveId());
+                if (clavesDistintasGlobal.size() > 2) {
+                    throw new RuntimeException("❌ Solo se permiten combinaciones con máximo 2 tipos diferentes de clave.");
+                }
+            }
+        }
+
+
+        // 🔒 5.6 Validar que las imágenes solo estén asociadas a una clave consistente
+        UUID claveImagenes = null;
+
+        for (ProductoRequest.CombinacionDTO comb : request.getCombinaciones()) {
+            if (comb.getImagenes() == null || comb.getImagenes().isEmpty()) continue;
+
+            List<UUID> clavesDeEstaCombinacion = comb.getAtributos().stream()
+                    .map(ProductoRequest.AtributoDTO::getClaveId)
+                    .toList();
+
+            // Detectar primera clave asociada a una imagen
+            if (claveImagenes == null) {
+                claveImagenes = clavesDeEstaCombinacion.get(0);
+            } else {
+                if (!clavesDeEstaCombinacion.contains(claveImagenes)) {
+                    throw new RuntimeException("❌ Todas las imágenes deben estar asociadas a combinaciones que contengan la misma clave: " + claveImagenes);
+                }
+            }
+        }
+
+
+        // 5.7 Validar que o todas las combinaciones tienen imágenes, o ninguna
+        boolean hayCombinacionConImagen = request.getCombinaciones().stream()
+                .anyMatch(c -> c.getImagenes() != null && !c.getImagenes().isEmpty());
+
+        boolean hayCombinacionSinImagen = request.getCombinaciones().stream()
+                .anyMatch(c -> c.getImagenes() == null || c.getImagenes().isEmpty());
+
+        if (hayCombinacionConImagen && hayCombinacionSinImagen) {
+            throw new RuntimeException("❌ Si una combinación tiene imágenes, todas deben tener imágenes. O ninguna.");
+        }
+
+
 
         // 6. Combinaciones
         List<ProductoCombinacion> combinaciones = new ArrayList<>();
@@ -90,7 +145,6 @@ public class ProductoServiceImpl implements ProductoService {
             Set<UUID> clavesUsadas = new HashSet<>();
 
             for (ProductoRequest.AtributoDTO atr : combDTO.getAtributos()) {
-
                 if (!clavesUsadas.add(atr.getClaveId())) {
                     throw new RuntimeException("❌ No se puede repetir la clave dentro de una misma combinación: " + atr.getClaveId());
                 }
@@ -117,8 +171,6 @@ public class ProductoServiceImpl implements ProductoService {
 
             combinacion.setAtributos(atributos);
 
-
-
             // 6.2 Imágenes
             List<ImagenCombinacion> imagenesCombinacion = new ArrayList<>();
             for (ProductoRequest.ImagenDTO img : combDTO.getImagenes()) {
@@ -140,6 +192,8 @@ public class ProductoServiceImpl implements ProductoService {
         // 7. Guardar producto
         productoRepository.save(producto);
 
+
+
         // 7.1 Relacionar con categorías
         for (UUID categoriaId : request.getCategorias()) {
             ProductoCategoria pc = new ProductoCategoria();
@@ -148,8 +202,17 @@ public class ProductoServiceImpl implements ProductoService {
             productoCategoriaRepository.save(pc);
         }
 
+        // ✅ 7.2 Registrar logística AUTOMÁTICO
+        RegistroLogisticaRequest registro = new RegistroLogisticaRequest(
+                producto.getId(),
+                usuarioId
+        );
+        logisticaClient.registrarProductoLogistica(registro);
+
         // 8. Relacionar con usuario
-        productoUsuarioRepository.save(new ProductoUsuario(producto.getId(), usuarioId));
+        UsuarioSimpleDTO usuario = usuariosClient.obtenerUsuarioPorId(usuarioId);
+
+        productoUsuarioRepository.save(new ProductoUsuario(producto.getId(), usuarioId, usuario.getFirstName(), usuario.getLastName()));
 
         // 9. Calcular resumen para DTO
         ProductoCombinacion principal = producto.getCombinaciones().stream()
@@ -177,6 +240,7 @@ public class ProductoServiceImpl implements ProductoService {
                 .urlImagenPrincipal(urlImagenPrincipal)
                 .build();
     }
+
 
     @Override
     @Transactional
@@ -242,7 +306,7 @@ public class ProductoServiceImpl implements ProductoService {
         dto.setDescripcion(producto.getDescripcion());
         dto.setEstado(producto.getEstado().name());
 
-        // ✅ Obtener IDs de categorías usando el repo intermedio (sin tocar la entidad)
+        // ✅ Categorías (nombres)
         List<UUID> categoriaIds = productoCategoriaRepository.findCategoriaIdsByProductoId(producto.getId());
         List<String> nombresCategorias = categoriaIds.stream()
                 .map(categoriaClient::obtenerNombreCategoria)
@@ -269,24 +333,25 @@ public class ProductoServiceImpl implements ProductoService {
 
         // ✅ Combinaciones
         List<DetalleProductoDTO.CombinacionDTO> combinacionesDTO = new ArrayList<>();
+
         for (ProductoCombinacion comb : producto.getCombinaciones()) {
             DetalleProductoDTO.CombinacionDTO combDTO = new DetalleProductoDTO.CombinacionDTO();
+            combDTO.setIdCombinacion(comb.getIdCombinacion());
             combDTO.setPrecio(comb.getPrecio());
             combDTO.setStock(comb.getStock());
             combDTO.setEsPrincipal(comb.isEsPrincipal());
 
-            // Atributos (usando claves locales)
+            // Atributos
             List<DetalleProductoDTO.AtributoDTO> atributos = comb.getAtributos().stream()
                     .map(a -> {
                         DetalleProductoDTO.AtributoDTO atr = new DetalleProductoDTO.AtributoDTO();
                         atr.setClaveNombre(a.getClave().getClave());
                         atr.setValorNombre(a.getValor().getValor());
-
                         return atr;
                     }).collect(Collectors.toList());
             combDTO.setAtributos(atributos);
 
-            // Imágenes por combinación
+            // Imágenes de la combinación
             List<DetalleProductoDTO.ImagenDTO> imgs = comb.getImagenes().stream()
                     .map(img -> {
                         DetalleProductoDTO.ImagenDTO i = new DetalleProductoDTO.ImagenDTO();
@@ -298,26 +363,67 @@ public class ProductoServiceImpl implements ProductoService {
 
             combinacionesDTO.add(combDTO);
         }
+
         dto.setCombinaciones(combinacionesDTO);
 
-        // ✅ Precio principal
         // ✅ Precio principal
         producto.getCombinaciones().stream()
                 .filter(ProductoCombinacion::isEsPrincipal)
                 .findFirst()
                 .ifPresent(p -> dto.setPrecio(p.getPrecio()));
 
-// ✅ Imagen principal
+        // ✅ Imagen principal
         producto.getCombinaciones().stream()
                 .filter(ProductoCombinacion::isEsPrincipal)
                 .findFirst()
                 .flatMap(pc -> pc.getImagenes().stream().findFirst())
-                .map(img -> img.getUrlImagen())
+                .map(ImagenCombinacion::getUrlImagen)
                 .ifPresent(dto::setUrlImagenPrincipal);
 
-        return dto;
+        // ✅ Validar combinaciones con imágenes y clave asociada
+        String claveImagenes = producto.getClaveControlaImagenes(); // ya viene desde BD
+        if (claveImagenes != null) {
+            for (ProductoCombinacion combinacion : producto.getCombinaciones()) {
+                if (combinacion.getImagenes() != null && !combinacion.getImagenes().isEmpty()) {
+                    boolean contieneClave = combinacion.getAtributos().stream()
+                            .anyMatch(attr -> attr.getClave().getId().toString().equals(claveImagenes));
+                    if (!contieneClave) {
+                        throw new RuntimeException("❌ Inconsistencia: hay combinaciones con imágenes sin tener la clave que las controla");
+                    }
+                }
+            }
+            dto.setClaveControlaImagenes(UUID.fromString(claveImagenes));
 
+        }
+
+        return dto;
     }
+
+    @Override
+    @Transactional
+    public UsuarioCarritoDTO obtenerProductoUsuarioPorUsuarioId(UUID usuarioId) {
+        // Obtener todos los ProductoUsuario por usuarioId
+        List<ProductoUsuario> productoUsuarios = productoUsuarioRepository.findByUsuarioId(usuarioId);
+
+        if (productoUsuarios.isEmpty()) {
+            throw new RuntimeException("❌ ProductoUsuario no encontrado");
+        }
+
+        // Seleccionar el primer producto (o aplicar lógica de negocio)
+        ProductoUsuario productoUsuario = productoUsuarios.get(0); // O alguna otra lógica para seleccionar el producto adecuado
+
+        // Mapear el producto a UsuarioCarritoDTO (solo uno)
+        return new UsuarioCarritoDTO(productoUsuario.getFirstName(), productoUsuario.getLastName());
+    }
+
+
+
+
+
+
+
+
+
 
 
 

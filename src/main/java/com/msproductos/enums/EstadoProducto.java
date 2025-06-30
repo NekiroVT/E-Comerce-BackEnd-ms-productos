@@ -1,9 +1,8 @@
 package com.msproductos.enums;
 
 public enum EstadoProducto {
-    BORRADOR,
+    PENDIENTE,
     ACTIVO,
-    INACTIVO,
-    AGOTADO,
-    SUSPENDIDO
+    RECHAZADO,
+    CANCELADO
 }
