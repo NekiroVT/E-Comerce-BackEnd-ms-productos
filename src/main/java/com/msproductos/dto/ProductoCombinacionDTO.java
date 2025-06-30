@@ -17,4 +17,6 @@ public class ProductoCombinacionDTO {
     // Estos son los valores de las claves
     private String valorClave1;
     private String valorClave2;
+    private UUID productoId;
+
 }

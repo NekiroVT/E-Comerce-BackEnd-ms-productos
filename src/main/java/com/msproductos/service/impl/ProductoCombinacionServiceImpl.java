@@ -38,36 +38,31 @@ public class ProductoCombinacionServiceImpl implements ProductoCombinacionServic
         dto.setPrecio(combinacion.getPrecio());
         dto.setStock(combinacion.getStock());
 
-        // Asegúrate de obtener el nombre del producto correctamente
-        String nombreProducto = combinacion.getProducto().getNombre();  // O ajusta esto si la relación es diferente
+        // ✅ CLAVE: poner el productoId base!
+        dto.setProductoId(combinacion.getProducto().getId());  // ⭐⭐⭐ Aquí arreglas todo
+
+        String nombreProducto = combinacion.getProducto().getNombre();
         dto.setNombre(nombreProducto);
 
-        // Obtener los atributos (claves y valores) asociados a la combinación
         List<CombinacionAtributo> atributos = combinacionAtributoRepository.findByCombinacion(combinacion);
-
 
         if (atributos.size() != 2) {
             throw new RuntimeException("La combinación debe tener exactamente 2 claves.");
         }
 
-        // Obtener los valores de las claves
-        String valorClave1 = atributos.get(0).getValor().getValor(); // Primer valor
-        String valorClave2 = atributos.get(1).getValor().getValor(); // Segundo valor
+        dto.setValorClave1(atributos.get(0).getValor().getValor());
+        dto.setValorClave2(atributos.get(1).getValor().getValor());
 
-        // Asignar los valores de las claves al DTO
-        dto.setValorClave1(valorClave1);
-        dto.setValorClave2(valorClave2);
-
-        // 🔽 Agregado: extraer las imágenes
         dto.setImagenes(
                 combinacion.getImagenes().stream()
-                        .sorted(Comparator.comparing(ImagenCombinacion::getOrden)) // Si quieres que la primera imagen sea la principal
+                        .sorted(Comparator.comparing(ImagenCombinacion::getOrden))
                         .map(ImagenCombinacion::getUrlImagen)
                         .collect(Collectors.toList())
         );
 
         return dto;
     }
+
 
     @Override
     public ProductoCombinacionDTO obtenerStockPorCombinacion(UUID combinacionId) {
